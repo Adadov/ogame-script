@@ -56,16 +56,16 @@ function Planet(pid,nom,coord) {
 	this.moonID = 0;
 	this.coordinates = {};
 	this.moon = 0;
+	this.planetID = 0;
 
-	if ( typeof pid == 'object' ) {
+	if ( typeof pid == 'undefined' ) { return this; }
+	else if ( typeof pid == 'object' ) {
 		for(k in pid) {
 			this[k] = pid[k];
 		}
-
+		console.log(this['id']);
 		return this;
 	}
-
-	else if ( typeof pid == 'undefined' ) { return this; }
 
 	this.id = pid;
 	this.nom = nom;
@@ -82,7 +82,6 @@ function Planet(pid,nom,coord) {
 		this['coordinates'] = coord;
 	}
 };
-
 Planet.prototype = {
 	addMoon: function(div) {
 		var moonID = parseInt(/([0-9]+)$/.exec(div.getAttribute('href'))[0]);
@@ -90,22 +89,21 @@ Planet.prototype = {
 		this['moonID'] = moonID;
 
 		var Moon = new Planet(moonID, moonName, this['coordinates']);
-		Moon.isMoon(true);
+		Moon['planetID'] = this['id'];
+		console.log('Create moon: '+Moon['id'].toString());
+		console.log(Moon);
+
 
 		return Moon;
-	},
-	getDetails: function() {
 	},
 	updateDatas: function() {
 		console.log('ICR - Update');
 	},
 	isMoon: function() {
-		if (typeof set == 'undefined') {
-			return this.type == 0 ? false : true;
-		}
+		return this['planetID'] == 0 ? false : true;
 	},
 	hasMoon: function() {
-		return this.moonID == 0 ? false : true;
+		return this['moonID'] == 0 ? false : true;
 	},
 	updResources: function(metal=0, cristal=0, deuterium=0) {
 		if ( metal != 0 ) {
@@ -130,8 +128,36 @@ Planet.prototype = {
 		}
 
 	},
-	updFlotte: function() {}
+	updFlotte: function() {},
+	getDetails: function() {
+		var details;
+			console.log(this);
+		if (!this.isMoon()) {
+			var div = document.querySelector('div[id="planet-'+this.id+'"]').getElementsByClassName('planetlink')[0];
+			details = /<br\/>([0-9\.]+)km \(([0-9]+)\/([0-9]+)\)<br\/?>(-?[0-9]+)\s*°C[^0-9]*([0-9]+)\s*°C<br\/>/.exec(div.getAttribute('title'));
+			// 1: taille | 2: used | 3: total | 4: temp min | 5: temp max
+			this['temp_min'] = parseInt(details[4]);
+			this['temp_max'] = parseInt(details[5]);
+		} else {
+			var div = document.querySelector('div[id="planet-'+this['planetID']+'"]').getElementsByClassName('moonlink')[0];
+			details = /<br>([0-9\.]+)km \(([0-9]+)\/([0-9]+)\)<br\/?>/.exec(div.getAttribute('title'));
+			// 1: taille | 2: used | 3: total
+		}
+		console.log(details);
+		this['taille'] = parseInt(details[1].replace(/\./g, ''));
+		this['used'] = parseInt(details[2]);
+		this['cases'] = parseInt(details[3]);
+	}
 };
+
+function Server() {
+	this.name = document.querySelector('meta[name="ogame-universe-name"]').getAttribute('content');
+	this.version = document.querySelector('meta[name="ogame-version"]').getAttribute('content');
+	this.speed = parseInt(document.querySelector('meta[name="ogame-universe-speed"]').getAttribute('content'));
+	this.fleetSpeed = parseInt(document.querySelector('meta[name="ogame-universe-speed-fleet"]').getAttribute('content'));
+	this.donutGalaxy = document.querySelector('meta[name="ogame-donut-galaxy"]').getAttribute('content') ? true : false;
+	this.donutSystem = document.querySelector('meta[name="ogame-donut-system"]').getAttribute('content') ? true : false;
+}
 
 function getCurrentPlanet() {
 	//console.log(document.querySelector('meta[name="ogame-planet-id"]').getAttribute('content'));
@@ -155,19 +181,9 @@ function checkPlanets() {
 	var modified = 0;
 
 	for(k in ids) {
+		console.log(Planets);
 		var div = document.querySelector('div[id="planet-'+k+'"]');
 		var iID = parseInt(k);
-
-		// if (!this.isMoon()) {
-		// 	var div = document.querySelector('div[id="planet-'+this.id+'"]').getElementsByClassName('planetlink')[0];
-		// 	var details = /<br\/>([0-9\.]+)km \(([0-9]+)\/([0-9]+)\)<br\/?>(-?[0-9]+)\s*°C[^0-9]*([0-9]+)\s*°C<br\/>/.exec(div.getAttribute('title'));
-		// 	// 1: taille | 2: used | 3: total | 4: temp min | 5: temp max
-
-		// } else {
-		// 	var div = document.querySelector('div[id="planet-'+this.id+'"]').getElementsByClassName('moonlink')[0];
-		// 	var details = /<br>([0-9\.]+)km \(([0-9]+)\/([0-9]+)\)<br\/?>/.exec(div.getAttribute('title'));
-		// 	// 1: taille | 2: used | 3: total
-		// }
 
 		if (!Planets.hasOwnProperty(iID)) {
 			var name = div.getElementsByClassName('planet-name')[0].innerHTML;
@@ -184,6 +200,7 @@ function checkPlanets() {
 				modified++;
 			}
 		}
+		Planets[iID].getDetails();
 	}
 
 	for (k in Planets) {
@@ -235,7 +252,11 @@ function prodDeut(md,speed, lvlplasma, temperature, geologue, booster) {
 // ==================================
 // #  INIT
 // ==================================
-//GM_setValue('ICRPlanets', '{}');
+
+var srvDatas = new Server();
+localStorage.setItem('ICR_Server', JSON.stringify(srvDatas));
+
+GM_setValue('ICRPlanets', '{}');
 var Planets = {}, PlanetIDS = [];
 var PlanetsDatas = JSON.parse(GM_getValue('ICRPlanets'));
 
@@ -252,7 +273,6 @@ var pageName;
 if(/component=empire/.exec(url)) {
 	// Vue empire
 } else if (pageName = /page=(resources|overview|station|research|shipyard|defense|fleet[1-3]|galaxy)/.exec(url)) {
-	console.log(Planets);
 	checkPlanets();
 
 	// Update current planet
@@ -280,4 +300,5 @@ if(/component=empire/.exec(url)) {
 }
 
 // console.log(Planets);
-// GM_setValue('ICRPlanets', JSON.stringify(Planets));
+GM_setValue('ICRPlanets', JSON.stringify(Planets));
+localStorage.setItem('ICRPlanets', JSON.stringify(Planets));
