@@ -45,10 +45,11 @@ PlanetStorage.prototype = {
 		localStorage.setItem('ICR_PlanetStore', json);
 		GM_setValue('ICR_PlanetStore', json);
 	},
+	update: function() {},
 	get: function(planetID) {},
-	set: function(oPlanet) {}
+	set: function(oPlanet) {},
 	add: function(oPlanet) {},
-	delete: function(planetID)
+	delete: function(planetID) {}
 };
 
 //PLANET
@@ -69,11 +70,19 @@ function Planet(pid,nom,coord) {
 	this['mines'] = {};
 	this['defenses'] = {};
 	this['flotte'] = {};
-	this['temperature'] = {};
-	this['moonID'] = 0;
 	this['coordinates'] = {};
+	this['moonID'] = 0;
 	this['moon'] = 0;
 	this['planetID'] = 0;
+	this['hangars'] = {};
+	this['batiments'] = {};
+	this['temp'] = {};
+
+	this['temperature'] = {};
+	this['cases'] = {
+		used:0,
+		total:0
+	};
 
 	if ( typeof pid == 'undefined' ) { return this; }
 	else if ( typeof pid == 'object' ) {
@@ -88,11 +97,11 @@ function Planet(pid,nom,coord) {
 	this['type'] = 0;
 
 	if (typeof coord == 'string') {
-		var coordinates = coord.replace('[','').replace(']','').split(':');
+		var aCoord = coord.replace('[','').replace(']','').split(':');
 		this['coordinates'] = {
-			galaxy: coordinates[0],
-			system: coordinates[1],
-			position: coordinates[2]
+			galaxy: aCoord[0],
+			system: aCoord[1],
+			position: aCoord[2]
 		};
 	} else {
 		this['coordinates'] = coord;
@@ -116,17 +125,6 @@ Planet.prototype = {
 	hasMoon: function() {
 		return this['moonID'] == 0 ? false : true;
 	},
-	updResources: function(metal=0, cristal=0, deuterium=0) {
-		if ( metal != 0 ) {
-			this['resources']['metal'] = metal;
-		}
-		if ( cristal != 0 ) {
-			this['resources']['cristal'] = cristal;
-		}
-		if ( deuterium != 0 ) {
-			this['resources']['deuterium'] = deuterium;
-		}
-	},
 	updProd: function(type) {
 		if (type == 'metal') {
 			var prod = Math.ceil(30 * this.mines.metal * Math.pow(1.1, this.mines.metal));
@@ -142,25 +140,94 @@ Planet.prototype = {
 	updFlotte: function() {},
 	getDetails: function() {
 		var details;
-			console.log(this);
 		if (!this.isMoon()) {
 			var div = document.querySelector('div[id="planet-'+this.id+'"]').getElementsByClassName('planetlink')[0];
 			details = /<br\/>([0-9\.]+)km \(([0-9]+)\/([0-9]+)\)<br\/?>(-?[0-9]+)\s*°C[^0-9]*([0-9]+)\s*°C<br\/>/
 				.exec(div.getAttribute('title'));
+			this.setTemperature(details[4],details[5]);
 			// 1: taille | 2: used | 3: total | 4: temp min | 5: temp max
-			this['temp_min'] = parseInt(details[4]);
-			this['temp_max'] = parseInt(details[5]);
 		} else {
 			var div = document.querySelector('div[id="planet-'+this['planetID']+'"]').getElementsByClassName('moonlink')[0];
 			details = /<br>([0-9\.]+)km \(([0-9]+)\/([0-9]+)\)<br\/?>/.exec(div.getAttribute('title'));
 			// 1: taille | 2: used | 3: total
 		}
-		console.log(details);
+		console.log('Récupération des détails:',this,details);
 		this['taille'] = parseInt(details[1].replace(/\./g, ''));
-		this['used'] = parseInt(details[2]);
-		this['cases'] = parseInt(details[3]);
-	}
+		this['cases']['used'] = parseInt(details[2]);
+		this['cases']['total'] = parseInt(details[3]);
+	},
+	setTemperature: function(min, max) {
+		min = parseInt(min);
+		max = parseInt(max);
+		this['temp']['min'] = min;
+		this['temp']['max'] = max;
+		this['temp']['moyenne'] = (min + max)/2;
+	},
+	setResources: function(metal=0, cristal=0, deuterium=0) {
+		if ( metal != 0 ) {
+			this['resources']['metal'] = metal;
+		}
+		if ( cristal != 0 ) {
+			this['resources']['cristal'] = cristal;
+		}
+		if ( deuterium != 0 ) {
+			this['resources']['deuterium'] = deuterium;
+		}
+	},
+	setMine: function(id=0, level=0) {
+		if (id == 1 || id == "metal") {
+			this['mines']['metal'] = level;
+		} else if (id == 2 || id == "cristal") {
+			this['mines']['cristal'] = level;
+		} else if (id == 3 || id == "deuterium") {
+			this['mines']['deuterium'] = level;
+		} else if (id == 4 || id == "solar") {
+			this['mines']['solar'] = level;
+		} else if (id == 5 || id == "fusion") {
+			this['mines']['fusion'] = level;
+		} else if (id == 6 || id == "sat") {
+			this['mines']['sat'] = level;
+		} else {
+			console.log('Impossible de définir le niveaux de la mine: ', id, level);
+		}
+	},
+	setHangar: function(id=0, level=0) {
+		if (id == 1 || id == "metal") {
+			this['hangars']['metal'] = level;
+		} else if (id == 2 || id == "cristal") {
+			this['hangars']['cristal'] = level;
+		} else if (id == 3 || id == "deuterium") {
+			this['hangars']['deuterium'] = level;
+		} else {
+			console.log('Impossible de définir le niveaux du hangar: ', id, level);
+		}
+	},
+	setBatiment: function(id=0, level=0) {
+		if (id == 0 || id == "robots") {
+			this['batiments']['robots'] = level;
+		} else if (id == 1 || id == "chantier") {
+			this['batiments']['chantier'] = level;
+		} else if (id == 2 || id == "laboratoire") {
+			this['batiments']['laboratoire'] = level;
+		} else if (id == 3 || id == "depot") {
+			this['batiments']['depot'] = level;
+		} else if (id == 4 || id == "silo") {
+			this['batiments']['silo'] = level;
+		} else if (id == 5 || id == "nanite") {
+			this['batiments']['nanite'] = level;
+		} else if (id == 6 || id == "terraformeur") {
+			this['batiments']['terraformeur'] = level;
+		} else if (id == 7 || id == "dock") {
+			this['batiments']['dock'] = level;
+		} else {
+			console.log('Impossible de définir le niveaux du batiment: ', id, level);
+		}
+	},
 };
+
+//RECHERCHES
+function Recherches() {}
+Recherches.prototype = {};
 
 //SCRIPT
 var Version = '1.0.0';
@@ -191,6 +258,7 @@ function getCurrentPlanet() {
 }
 
 function checkPlanets(Planets) {
+	console.log('-- CHECK PLANET', Planets);
 	var ids = {};
 	var divs = document.getElementsByClassName('smallplanet');
 	for (var i=0; i<divs.length; i++) {
@@ -203,12 +271,14 @@ function checkPlanets(Planets) {
 		var div = document.querySelector('div[id="planet-'+k+'"]');
 		var iID = parseInt(k);
 
+		// Si la planète n'est pas dans la liste on l'ajoute
 		if (!Planets.hasOwnProperty(iID)) {
 			var name = div.getElementsByClassName('planet-name')[0].innerHTML;
 			var coords = div.getElementsByClassName('planet-koords')[0].innerHTML;
 			Planets[iID] = new Planet(iID, name, coords, 'planet');
 			modified++;
 		}
+		// Récupération des infos de la lune
 		if (div.getElementsByClassName('moonlink')[0]) {
 			var IDmoon = parseInt(/([0-9]+)$/.exec(div.getElementsByClassName('moonlink')[0].getAttribute('href'))[0]);
 			// Création de la lune dans la base et lien avec la planète
@@ -220,7 +290,6 @@ function checkPlanets(Planets) {
 		}
 		Planets[iID].getDetails();
 	}
-	//console.log("Liste planètes:", Planets);
 
 	for (k in Planets) {
 		if (!ids.hasOwnProperty(parseInt(k))) {
@@ -230,7 +299,7 @@ function checkPlanets(Planets) {
 		}
 	}
 	if (modified) {
-		console.log("Sauvegarde liste !!",Planets);
+		console.log("Sauvegarde liste !!", Planets);
 		GM_setValue('ICRPlanets', JSON.stringify(Planets));
 		localStorage.setItem('ICR_Planets', JSON.stringify(Planets));
 	}
@@ -274,9 +343,10 @@ function prodDeut(md,speed, lvlplasma, temperature, geologue, booster) {
 // ==================================
 
 var srvDatas = new Server();
+console.log('Paramètres du serveur:', srvDatas);
 localStorage.setItem('ICR_Server', JSON.stringify(srvDatas));
 
-GM_setValue('ICRPlanets', '{}');
+// GM_setValue('ICRPlanets', '{}');
 var Planets = {}, PlanetIDS = [];
 var PlanetsDatas = JSON.parse(GM_getValue('ICRPlanets'));
 
@@ -290,11 +360,14 @@ var pageName;
 
 if(pageName = /component=(empire)/.exec(url)) {
 	// Vue empire
+	console.log('-- Page: empire');
 } else if (pageName = /page=(resources|overview|station|research|shipyard|defense|fleet[1-3]|galaxy)/.exec(url)) {
+	console.log('-- Page: '+pageName[1]);
+	pageName = pageName[1];
 	checkPlanets(Planets);
 
 	// Update current planet
-	var CurPlanet = getCurrentPlanet();
+	var CP = getCurrentPlanet();
 
 	// MAJ des ressources + production
 	//var rezUL = document.getElementById('resources');
@@ -303,8 +376,8 @@ if(pageName = /component=(empire)/.exec(url)) {
 	var metal = parseInt(document.getElementById('resources_metal').innerHTML.replace(/[.,]/g,''));
 	var crystal = parseInt(document.getElementById('resources_crystal').innerHTML.replace(/[.,]/g,''));
 	var deuterium = parseInt(document.getElementById('resources_deuterium').innerHTML.replace(/[.,]/g,''));
-	CurPlanet.updResources(metal,crystal,deuterium);
-	console.log(CurPlanet);
+	CP.setResources(metal,crystal,deuterium);
+	console.log('Planète courante:',CP);
 
 	GM_setValue('ICRPlanets', JSON.stringify(Planets));
 	localStorage.setItem('ICR_Planets', JSON.stringify(Planets));
@@ -312,9 +385,37 @@ if(pageName = /component=(empire)/.exec(url)) {
 	// ==================================
 	// #  Traitement spécifique aux pages
 	// ==================================
-	// Mines
 	if (pageName == 'resources') {
+		// Récupération des mines
+		if (!CP.isMoon()) {
+			console.log('-- Récupération des niveaux de mines');
+			for(var i=1; i<=6; i++) {
+				var level = parseInt(document.getElementById('button'+i).getElementsByClassName('level')[0].innerHTML
+					.replace(/<span[\w\s\S\n\r]*\/span>/m,'').replace(/[\s]/g,''));
+				CP.setMine(i, level);
+			}
+		} else {
+			console.log('-- Pas de mines sur une lune !!');
+		}
+		// Récupération des hangars
+		console.log('-- Récupération des niveaux de hangars');
+		for(var i=1; i<=3; i++) {
+			var level = parseInt(document.getElementById('button'+(i+6)).getElementsByClassName('level')[0].innerHTML
+				.replace(/<span[\w\s\S\n\r]*?\/span>/gm,'').replace(/[\s]/g,''));
+			CP.setHangar(i, level);
+		}
+	} else if (pageName == 'station') { // page installations
+		for(var i=0; i<=7; i++) {
+			var level = parseInt(document.getElementById('button'+i).getElementsByClassName('level')[0].innerHTML
+				.replace(/<span [\w\s\S\n\r]*?<\/span>/gm,'').replace(/[\s]/g,''));
+			CP.setBatiment(i, level);
+		}
 	}
+} else if (pageName = /page=(messages)/.exec(url)) {
+	console.log('-- Page: messages');
+} else {
+	pageName = /page=([a-z]+)/.exec(url);
+	console.log('-- Page non traitée: ', pageName[1]);
 }
 
 // console.log(Planets);
