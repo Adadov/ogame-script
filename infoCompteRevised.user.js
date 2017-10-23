@@ -29,6 +29,18 @@ function Server() {
 	this.fleetSpeed = parseInt(document.querySelector('meta[name="ogame-universe-speed-fleet"]').getAttribute('content'));
 	this.donutGalaxy = document.querySelector('meta[name="ogame-donut-galaxy"]').getAttribute('content') ? true : false;
 	this.donutSystem = document.querySelector('meta[name="ogame-donut-system"]').getAttribute('content') ? true : false;
+
+	// settings:{
+	// 	galaxies:7,
+	// 	systems:499,
+	// 	donut_galaxy:1,
+	// 	donut_system:1,
+	// 	speed_fleet:3,
+	// 	debris_factor:0.5,
+	// 	repair_factor:0.7,
+	// 	rapid_fire:1
+	// }
+
 }
 
 //PLANETSTORE
@@ -128,11 +140,9 @@ Planet.prototype = {
 	updProd: function(type) {
 		if (type == 'metal') {
 			var prod = Math.ceil(30 * this.mines.metal * Math.pow(1.1, this.mines.metal));
-		}
-		if (type == 'cristal') {
+		} else if (type == 'cristal') {
 			var prod = Math.ceil(20 * this.mines.cristal * Math.pow(1.1, this.mines.cristal));
-		}
-		if (type == 'deut') {
+		} else if (type == 'deut') {
 			var prod = Math.ceil((20 * this.mines.deut * Math.pow(1.1, this.mines.deut) * (-0.004 * this.temperature.moyen + 1.44) ));
 		}
 
@@ -166,11 +176,9 @@ Planet.prototype = {
 	setResources: function(metal=0, cristal=0, deuterium=0) {
 		if ( metal != 0 ) {
 			this['resources']['metal'] = metal;
-		}
-		if ( cristal != 0 ) {
+		} else if ( cristal != 0 ) {
 			this['resources']['cristal'] = cristal;
-		}
-		if ( deuterium != 0 ) {
+		} else if ( deuterium != 0 ) {
 			this['resources']['deuterium'] = deuterium;
 		}
 	},
@@ -226,8 +234,58 @@ Planet.prototype = {
 };
 
 //RECHERCHES
-function Recherches() {}
-Recherches.prototype = {};
+function Recherches() {
+	this['datas'] = {};
+	return this;
+}
+Recherches.prototype = {
+	set: function(id, level) {
+		id = parseInt(id);
+		level = parseInt(level);
+		this['datas'][id] = level;
+		//console.log('Recherche ajoutée', id, level);
+	},
+	get: function(id) {
+		//TODO: Ajout recherche par nom
+		return this['datas'][id];
+	},
+	save: function() {
+		localStorage.setItem('ICR_Research', JSON.stringify(this));
+		console.log('-- Recherches sauvées !', this);
+	},
+	load: function() {
+		var tmp = JSON.parse(localStorage.getItem('ICR_Research'));
+		for (k in tmp['datas']) {
+			this['datas'][k] = tmp['datas'][k];
+		}
+		console.log('-- Recherches chargées !', this);
+	},
+	getSim: function() {
+		var tmp = {
+			0: [
+				{
+					research: {}
+				}
+			],
+			settings:{
+				galaxies:7,
+				systems:499,
+				donut_galaxy:1,
+				donut_system:1,
+				speed_fleet:3,
+				debris_factor:0.5,
+				repair_factor:0.7,
+				rapid_fire:1
+			}
+		};
+		// console.log(tmp);
+		for (k in this['datas']) {
+			tmp[0][0]['research'][k] = {'level': this['datas'][k]};
+		}
+		console.log(tmp);
+		return btoa(JSON.stringify(tmp));
+	}
+};
 
 //SCRIPT
 var Version = '1.0.0';
@@ -342,6 +400,8 @@ function prodDeut(md,speed, lvlplasma, temperature, geologue, booster) {
 // #  INIT
 // ==================================
 
+var RCH = new Recherches();
+RCH.load();
 var srvDatas = new Server();
 console.log('Paramètres du serveur:', srvDatas);
 localStorage.setItem('ICR_Server', JSON.stringify(srvDatas));
@@ -388,7 +448,7 @@ if(pageName = /component=(empire)/.exec(url)) {
 	if (pageName == 'resources') {
 		// Récupération des mines
 		if (!CP.isMoon()) {
-			console.log('-- Récupération des niveaux de mines');
+			console.log('-- Récupération des niveau de mines');
 			for(var i=1; i<=6; i++) {
 				var level = parseInt(document.getElementById('button'+i).getElementsByClassName('level')[0].innerHTML
 					.replace(/<span[\w\s\S\n\r]*\/span>/m,'').replace(/[\s]/g,''));
@@ -398,7 +458,7 @@ if(pageName = /component=(empire)/.exec(url)) {
 			console.log('-- Pas de mines sur une lune !!');
 		}
 		// Récupération des hangars
-		console.log('-- Récupération des niveaux de hangars');
+		console.log('-- Récupération des niveau de hangars');
 		for(var i=1; i<=3; i++) {
 			var level = parseInt(document.getElementById('button'+(i+6)).getElementsByClassName('level')[0].innerHTML
 				.replace(/<span[\w\s\S\n\r]*?\/span>/gm,'').replace(/[\s]/g,''));
@@ -410,6 +470,15 @@ if(pageName = /component=(empire)/.exec(url)) {
 				.replace(/<span [\w\s\S\n\r]*?<\/span>/gm,'').replace(/[\s]/g,''));
 			CP.setBatiment(i, level);
 		}
+	} else if (pageName == 'research') {
+		var btns = document.getElementsByClassName('detail_button');
+		for (var i=0; i<btns.length;i++) {
+			var rshID = /details([0-9]+)/.exec(btns[i].id);
+			var lvl = btns[i].getElementsByClassName('level')[0].innerHTML
+				.replace(/<span [\w\s\S\n\r]*?<\/span>/gm,'').replace(/[\s]/g,'');
+			RCH.set(rshID[1], lvl);
+		}
+		RCH.save();
 	}
 } else if (pageName = /page=(messages)/.exec(url)) {
 	console.log('-- Page: messages');
@@ -421,3 +490,9 @@ if(pageName = /component=(empire)/.exec(url)) {
 // console.log(Planets);
 GM_setValue('ICRPlanets', JSON.stringify(Planets));
 localStorage.setItem('ICR_Planets', JSON.stringify(Planets));
+
+// var moyenne = 0;
+// for (k in Planets) {
+// 	moy = moy + Planets[k]['mines']['metal'];
+// }
+// moy = moy / Planets.length;
