@@ -171,6 +171,7 @@ Planet.prototype = {
 		this['cases']['total'] = parseInt(details[3]);
 	},
 	setTemperature: function(min, max) {
+		console.log('-- Def températures: ',min,max);
 		min = parseInt(min);
 		max = parseInt(max);
 		this['temp']['min'] = min;
@@ -178,6 +179,7 @@ Planet.prototype = {
 		this['temp']['moyenne'] = (min + max)/2;
 	},
 	setResources: function(metal=0, cristal=0, deuterium=0) {
+		console.log('-- Def Resources: ', metal, cristal, deuterium);
 		if ( metal != 0 ) {
 			this['resources']['metal'] = metal;
 		} else if ( cristal != 0 ) {
@@ -187,6 +189,7 @@ Planet.prototype = {
 		}
 	},
 	setMine: function(id=0, level=0) {
+		console.log('-- Def mine: ', id, level);
 		if (id == 1 || id == "metal") {
 			this['mines']['metal'] = level;
 			this.updProd(0);
@@ -207,6 +210,7 @@ Planet.prototype = {
 		}
 	},
 	setHangar: function(id=0, level=0) {
+		console.log('-- Def Hangar: ', id, level);
 		if (id == 1 || id == "metal") {
 			this['hangars']['metal'] = level;
 		} else if (id == 2 || id == "cristal") {
@@ -218,6 +222,7 @@ Planet.prototype = {
 		}
 	},
 	setBatiment: function(id=0, level=0) {
+		console.log('-- Def batiment: ', id, level);
 		if (id == 0 || id == "robots") {
 			this['batiments']['robots'] = level;
 		} else if (id == 1 || id == "chantier") {
@@ -247,6 +252,7 @@ function Recherches() {
 }
 Recherches.prototype = {
 	set: function(id, level) {
+		console.log('-- Def recherche: ', id, level);
 		id = parseInt(id);
 		level = parseInt(level);
 		this['datas'][id] = level;
@@ -289,7 +295,7 @@ Recherches.prototype = {
 		for (k in this['datas']) {
 			tmp[0][0]['research'][k] = {'level': this['datas'][k]};
 		}
-		console.log(tmp);
+		console.log('[DEBUG] Simulation: ',tmp);
 		return btoa(JSON.stringify(tmp));
 	}
 };
@@ -323,7 +329,7 @@ function getCurrentPlanet() {
 }
 
 function checkPlanets(Planets) {
-	console.log('-- CHECK PLANET', Planets);
+	console.log('-- [DEBUG] checkPlanets', Planets);
 	var ids = {};
 	var divs = document.getElementsByClassName('smallplanet');
 	for (var i=0; i<divs.length; i++) {
@@ -415,14 +421,15 @@ localStorage.setItem('ICR_Server', JSON.stringify(srvDatas));
 
 // GM_setValue('ICRPlanets', '{}');
 var Planets = {}, PlanetIDS = [];
-var PlanetsDatas = JSON.parse(GM_getValue('ICRPlanets'));
 
+/*
+var PlanetsDatas = JSON.parse(GM_getValue('ICRPlanets'));
 if (PlanetsDatas != null) {
 	for (k in PlanetsDatas) {
 		Planets[k] = new Planet(PlanetsDatas[k]);
 	}
 }
-
+*/
 var pageName;
 
 if(pageName = /component=(empire)/.exec(url)) {
