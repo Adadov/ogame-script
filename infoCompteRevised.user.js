@@ -419,10 +419,12 @@ var srvDatas = new Server();
 console.log('Paramètres du serveur:', srvDatas);
 localStorage.setItem('ICR_Server', JSON.stringify(srvDatas));
 
-// GM_setValue('ICRPlanets', '{}');
-var Planets = {}, PlanetIDS = [];
+var PlanetIDS = [];
 
+var PS = PlanetStorage();
+var Planets = PS.load();
 /*
+GM_setValue('ICRPlanets', '{}');
 var PlanetsDatas = JSON.parse(GM_getValue('ICRPlanets'));
 if (PlanetsDatas != null) {
 	for (k in PlanetsDatas) {
