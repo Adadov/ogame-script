@@ -151,14 +151,19 @@ Planet.prototype = {
 		return this['moonID'] == 0 ? false : true;
 	},
 	updProd: function(type) {
-		if (type == 'metal') {
-			var prod = Math.ceil(30 * this.mines.metal * Math.pow(1.1, this.mines.metal));
-		} else if (type == 'cristal') {
-			var prod = Math.ceil(20 * this.mines.cristal * Math.pow(1.1, this.mines.cristal));
-		} else if (type == 'deut') {
-			var prod = Math.ceil((20 * this.mines.deut * Math.pow(1.1, this.mines.deut) * (-0.004 * this.temperature.moyen + 1.44) ));
+		if (type == 'metal' || type == 0) {
+			console.log('-- Mise à jour production métal');
+			var prod = Math.ceil(30 * this['mines']['metal'] * Math.pow(1.1, this['mines']['metal']));
+		} else if (type == 'cristal' || type == 1) {
+			console.log('-- Mise à jour production cristal');
+			var prod = Math.ceil(20 * this['mines']['cristal'] * Math.pow(1.1, this['mines']['cristal']));
+		} else if (type == 'deut' || type == 2) {
+			console.log('-- Mise à jour production deut');
+			var prod = Math.ceil((20 * this['mines']['deut'] * Math.pow(1.1, this['mines']['deut']) * (-0.004 * this['temp']['moyenne'] + 1.44) ));
+		} else if (type == 'energie' || type == 3) {
+			// Production énergie
+			console.log('-- Mise à jour production énergie');
 		}
-
 	},
 	getDetails: function() {
 		var details;
@@ -179,6 +184,7 @@ Planet.prototype = {
 		this['cases']['total'] = parseInt(details[3]);
 	},
 	setTemperature: function(min, max) {
+		console.log('-- Def températures: ',min,max);
 		min = parseInt(min);
 		max = parseInt(max);
 		this['temp']['min'] = min;
@@ -186,6 +192,7 @@ Planet.prototype = {
 		this['temp']['moyenne'] = (min + max)/2;
 	},
 	setResources: function(metal=0, cristal=0, deuterium=0) {
+		console.log('-- Def Resources: ', metal, cristal, deuterium);
 		if ( metal != 0 ) {
 			this['resources']['metal'] = metal;
 		} else if ( cristal != 0 ) {
@@ -195,12 +202,16 @@ Planet.prototype = {
 		}
 	},
 	setMine: function(id=0, level=0) {
+		console.log('-- Def mine: ', id, level);
 		if (id == 1 || id == "metal") {
 			this['mines']['metal'] = level;
+			this.updProd(0);
 		} else if (id == 2 || id == "cristal") {
 			this['mines']['cristal'] = level;
+			this.updProd(1);
 		} else if (id == 3 || id == "deuterium") {
 			this['mines']['deuterium'] = level;
+			this.updProd(2)
 		} else if (id == 4 || id == "solar") {
 			this['mines']['solar'] = level;
 		} else if (id == 5 || id == "fusion") {
@@ -212,6 +223,7 @@ Planet.prototype = {
 		}
 	},
 	setHangar: function(id=0, level=0) {
+		console.log('-- Def Hangar: ', id, level);
 		if (id == 1 || id == "metal") {
 			this['hangars']['metal'] = level;
 		} else if (id == 2 || id == "cristal") {
@@ -223,6 +235,7 @@ Planet.prototype = {
 		}
 	},
 	setBatiment: function(id=0, level=0) {
+		console.log('-- Def batiment: ', id, level);
 		if (id == 0 || id == "robots") {
 			this['batiments']['robots'] = level;
 		} else if (id == 1 || id == "chantier") {
@@ -256,6 +269,7 @@ function Recherches() {
 }
 Recherches.prototype = {
 	set: function(id, level) {
+		console.log('-- Def recherche: ', id, level);
 		id = parseInt(id);
 		level = parseInt(level);
 		this['datas'][id] = level;
@@ -298,7 +312,7 @@ Recherches.prototype = {
 		for (k in this['datas']) {
 			tmp[0][0]['research'][k] = {'level': this['datas'][k]};
 		}
-		console.log(tmp);
+		console.log('[DEBUG] Simulation: ',tmp);
 		return btoa(JSON.stringify(tmp));
 	}
 };
@@ -332,7 +346,7 @@ function getCurrentPlanet() {
 }
 
 function checkPlanets(Planets) {
-	console.log('-- CHECK PLANET', Planets);
+	console.log('-- [DEBUG] checkPlanets', Planets);
 	var ids = {};
 	var divs = document.getElementsByClassName('smallplanet');
 	for (var i=0; i<divs.length; i++) {
@@ -422,8 +436,19 @@ var srvDatas = new Server();
 console.log('Paramètres du serveur:', srvDatas);
 localStorage.setItem('ICR_Server', JSON.stringify(srvDatas));
 
-// GM_setValue('ICRPlanets', '{}');
-var Planets = {}, PlanetIDS = [];
+var PlanetIDS = [];
+
+var PS = PlanetStorage();
+var Planets = PS.load();
+/*
+GM_setValue('ICRPlanets', '{}');
+var PlanetsDatas = JSON.parse(GM_getValue('ICRPlanets'));
+if (PlanetsDatas != null) {
+	for (k in PlanetsDatas) {
+		Planets[k] = new Planet(PlanetsDatas[k]);
+	}
+}
+*/
 var pageName;
 
 if(pageName = /component=(empire)/.exec(url)[1]) {
