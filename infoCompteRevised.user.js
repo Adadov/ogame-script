@@ -45,17 +45,29 @@ function Server() {
 
 //PLANETSTORE
 function PlanetStorage() {
-	this['datas']['number'] = 0;
-	this['datas']['planets'] = {};
+	this['datas'] = {
+		number: 0,
+		planets: {}
+	};
 };
 PlanetStorage.prototype = {
-	load: function() {
-		var raw = JSON.parse(localStorage.getItem('ICR_PlanetStore'));
-	},
+	// Sauver les données dans le navigateur
 	save: function() {
-		var json = JSON.stringify(this);
-		localStorage.setItem('ICR_PlanetStore', json);
-		GM_setValue('ICR_PlanetStore', json);
+		localStorage.setItem('ICR_PlanetStore', JSON.stringify(this['datas']));
+		console.log('-- Planètes sauvées !', this);
+	},
+	// Charger les données sauvées dans le navigateur
+	// Renvoi un tableau contenant les objets des planètes
+	load: function() {
+		var tmp = JSON.parse(localStorage.getItem('ICR_PlanetStore'));
+		if (tmp != null) {
+			for (k in tmp['planets']) {
+				this['datas']['planets'][k] = new Planet(tmp[k]);
+			}
+			this['datas']['number'] = tmp['planets'].length;
+		}
+		console.log('-- Planètes chargées !', this);
+		return this['datas']['planets'];
 	},
 	update: function() {},
 	get: function(planetID) {},
@@ -84,13 +96,12 @@ function Planet(pid,nom,coord) {
 	this['flotte'] = {};
 	this['coordinates'] = {};
 	this['moonID'] = 0;
-	this['moon'] = 0;
 	this['planetID'] = 0;
 	this['hangars'] = {};
 	this['batiments'] = {};
 	this['temp'] = {};
+	this['flotte'] = {};
 
-	this['temperature'] = {};
 	this['cases'] = {
 		used:0,
 		total:0
@@ -99,7 +110,10 @@ function Planet(pid,nom,coord) {
 	if ( typeof pid == 'undefined' ) { return this; }
 	else if ( typeof pid == 'object' ) {
 		for(k in pid) {
-			this[k] = pid[k];
+			var deleted = {vaisseaux:true, temperature:true, moon:true};
+			if (!deleted.hasOwnProperty(k)) {
+				this[k] = pid[k];
+			}
 		}
 		return this;
 	}
@@ -130,7 +144,6 @@ Planet.prototype = {
 
 		return Moon;
 	},
-	updateDatas: function() {},
 	isMoon: function() {
 		return this['planetID'] == 0 ? false : true;
 	},
@@ -147,7 +160,6 @@ Planet.prototype = {
 		}
 
 	},
-	updFlotte: function() {},
 	getDetails: function() {
 		var details;
 		if (!this.isMoon()) {
@@ -231,6 +243,10 @@ Planet.prototype = {
 			console.log('Impossible de définir le niveaux du batiment: ', id, level);
 		}
 	},
+	setVaisseau: function(id=0, number=0) {
+		number = parseInt(number);
+		this['flotte'][id] = number;
+	}
 };
 
 //RECHERCHES
@@ -408,22 +424,13 @@ localStorage.setItem('ICR_Server', JSON.stringify(srvDatas));
 
 // GM_setValue('ICRPlanets', '{}');
 var Planets = {}, PlanetIDS = [];
-var PlanetsDatas = JSON.parse(GM_getValue('ICRPlanets'));
-
-if (PlanetsDatas != null) {
-	for (k in PlanetsDatas) {
-		Planets[k] = new Planet(PlanetsDatas[k]);
-	}
-}
-
 var pageName;
 
-if(pageName = /component=(empire)/.exec(url)) {
+if(pageName = /component=(empire)/.exec(url)[1]) {
 	// Vue empire
 	console.log('-- Page: empire');
-} else if (pageName = /page=(resources|overview|station|research|shipyard|defense|fleet[1-3]|galaxy)/.exec(url)) {
-	console.log('-- Page: '+pageName[1]);
-	pageName = pageName[1];
+} else if (pageName = /page=(resources|overview|station|research|shipyard|defense|fleet[1-3]|galaxy)/.exec(url)[1]) {
+	console.log('-- Page: '+pageName);
 	checkPlanets(Planets);
 
 	// Update current planet
@@ -465,10 +472,14 @@ if(pageName = /component=(empire)/.exec(url)) {
 			CP.setHangar(i, level);
 		}
 	} else if (pageName == 'station') { // page installations
-		for(var i=0; i<=7; i++) {
-			var level = parseInt(document.getElementById('button'+i).getElementsByClassName('level')[0].innerHTML
-				.replace(/<span [\w\s\S\n\r]*?<\/span>/gm,'').replace(/[\s]/g,''));
-			CP.setBatiment(i, level);
+		if (!CP.isMoon()) {
+			console.log('-- Installations différentes sur une lune');
+		} else {
+			for(var i=0; i<=7; i++) {
+				var level = parseInt(document.getElementById('button'+i).getElementsByClassName('level')[0].innerHTML
+					.replace(/<span [\w\s\S\n\r]*?<\/span>/gm,'').replace(/[\s]/g,''));
+				CP.setBatiment(i, level);
+			}
 		}
 	} else if (pageName == 'research') {
 		var btns = document.getElementsByClassName('detail_button');
@@ -479,11 +490,23 @@ if(pageName = /component=(empire)/.exec(url)) {
 			RCH.set(rshID[1], lvl);
 		}
 		RCH.save();
+	} else if (pageName == 'shipyard') {
+		// var civil = {202:true, 203:true, 208:true, 209:true, 210:true, 212:true};
+		// var military = {204:true, 205:true, 206:true, 207:true, 215:true, 211:true, 213:true, 214:true};
+		// for (k in civil) {
+		for (var k=202; k<=215; k++) {
+			if (k != 212) { // Pas les sats
+				var btn = document.getElementById('details'+k);
+				var lvl = btn.getElementsByClassName('level')[0].innerHTML
+					.replace(/<span [\w\s\S\n\r]*?<\/span>/gm,'').replace(/[\s]/g,'');
+				CP.setVaisseau(k, lvl);
+			}
+		}
 	}
-} else if (pageName = /page=(messages)/.exec(url)) {
+} else if (pageName = /page=(messages)/.exec(url)[1]) {
 	console.log('-- Page: messages');
 } else {
-	pageName = /page=([a-z]+)/.exec(url);
+	pageName = /page=([a-z]+)/.exec(url)[1];
 	console.log('-- Page non traitée: ', pageName[1]);
 }
 
