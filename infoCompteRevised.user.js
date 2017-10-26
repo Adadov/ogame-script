@@ -138,16 +138,20 @@ Planet.prototype = {
 		return this['moonID'] == 0 ? false : true;
 	},
 	updProd: function(type) {
-		if (type == 'metal') {
-			var prod = Math.ceil(30 * this.mines.metal * Math.pow(1.1, this.mines.metal));
-		} else if (type == 'cristal') {
-			var prod = Math.ceil(20 * this.mines.cristal * Math.pow(1.1, this.mines.cristal));
-		} else if (type == 'deut') {
-			var prod = Math.ceil((20 * this.mines.deut * Math.pow(1.1, this.mines.deut) * (-0.004 * this.temperature.moyen + 1.44) ));
+		if (type == 'metal' || type == 0) {
+			console.log('-- Mise à jour production métal');
+			var prod = Math.ceil(30 * this['mines']['metal'] * Math.pow(1.1, this['mines']['metal']));
+		} else if (type == 'cristal' || type == 1) {
+			console.log('-- Mise à jour production cristal');
+			var prod = Math.ceil(20 * this['mines']['cristal'] * Math.pow(1.1, this['mines']['cristal']));
+		} else if (type == 'deut' || type == 2) {
+			console.log('-- Mise à jour production deut');
+			var prod = Math.ceil((20 * this['mines']['deut'] * Math.pow(1.1, this['mines']['deut']) * (-0.004 * this['temp']['moyenne'] + 1.44) ));
+		} else if (type == 'energie' || type == 3) {
+			// Production énergie
+			console.log('-- Mise à jour production énergie');
 		}
-
 	},
-	updFlotte: function() {},
 	getDetails: function() {
 		var details;
 		if (!this.isMoon()) {
@@ -185,10 +189,13 @@ Planet.prototype = {
 	setMine: function(id=0, level=0) {
 		if (id == 1 || id == "metal") {
 			this['mines']['metal'] = level;
+			this.updProd(0);
 		} else if (id == 2 || id == "cristal") {
 			this['mines']['cristal'] = level;
+			this.updProd(1);
 		} else if (id == 3 || id == "deuterium") {
 			this['mines']['deuterium'] = level;
+			this.updProd(2)
 		} else if (id == 4 || id == "solar") {
 			this['mines']['solar'] = level;
 		} else if (id == 5 || id == "fusion") {
