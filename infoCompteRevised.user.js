@@ -23,12 +23,13 @@
 
 //SERVER
 function Server() {
-	this.name = document.querySelector('meta[name="ogame-universe-name"]').getAttribute('content');
-	this.version = document.querySelector('meta[name="ogame-version"]').getAttribute('content');
-	this.speed = parseInt(document.querySelector('meta[name="ogame-universe-speed"]').getAttribute('content'));
-	this.fleetSpeed = parseInt(document.querySelector('meta[name="ogame-universe-speed-fleet"]').getAttribute('content'));
-	this.donutGalaxy = document.querySelector('meta[name="ogame-donut-galaxy"]').getAttribute('content') ? true : false;
-	this.donutSystem = document.querySelector('meta[name="ogame-donut-system"]').getAttribute('content') ? true : false;
+	this['datas'] = {};
+	this['datas']['name'] = document.querySelector('meta[name="ogame-universe-name"]').getAttribute('content');
+	this['datas']['version'] = document.querySelector('meta[name="ogame-version"]').getAttribute('content');
+	this['datas']['speed'] = parseInt(document.querySelector('meta[name="ogame-universe-speed"]').getAttribute('content'));
+	this['datas']['fleetSpeed'] = parseInt(document.querySelector('meta[name="ogame-universe-speed-fleet"]').getAttribute('content'));
+	this['datas']['donutGalaxy'] = document.querySelector('meta[name="ogame-donut-galaxy"]').getAttribute('content') ? true : false;
+	this['datas']['donutSystem'] = document.querySelector('meta[name="ogame-donut-system"]').getAttribute('content') ? true : false;
 
 	// settings:{
 	// 	galaxies:7,
@@ -40,8 +41,19 @@ function Server() {
 	// 	repair_factor:0.7,
 	// 	rapid_fire:1
 	// }
-
 }
+Server.prototype = {
+	set: function(name, value) {
+		this['datas'][name] = value;
+	},
+	get: function(name) {
+		if (typeof this['datas'][name] != 'undefined') {
+			return this['datas'][name];
+		} else {
+			return null;
+		}
+	}
+};
 
 //PLANETSTORE
 function PlanetStorage() {
@@ -109,7 +121,7 @@ function Planet(pid,nom,coord) {
 
 	if ( typeof pid == 'undefined' ) { return this; }
 	else if ( typeof pid == 'object' ) {
-		for(k in pid) {
+		for (k in pid) {
 			var deleted = {vaisseaux:true, temperature:true, moon:true};
 			if (!deleted.hasOwnProperty(k)) {
 				this[k] = pid[k];
@@ -340,7 +352,7 @@ function getCurrentPlanet() {
 		//Planets[id].updateDatas();
 		return Planets[id];
 	} else {
-		console.log('Impossible de trouver la planète dans la DB !! ID: '+id);
+		console.log('Impossible de trouver la planète dans la DB !! ID: ',id);
 		return false;
 	}
 }
@@ -355,7 +367,7 @@ function checkPlanets(Planets) {
 	}
 	var modified = 0;
 
-	for(k in ids) {
+	for (k in ids) {
 		var div = document.querySelector('div[id="planet-'+k+'"]');
 		var iID = parseInt(k);
 
@@ -419,7 +431,35 @@ function prodDeut(md,speed, lvlplasma, temperature, geologue, booster) {
 	return Math.round(base*geologue) +  Math.round(base*lvlplasma*0.33/100) + Math.round(base*booster/100);
 }
 
-
+String.prototype.ssplit = function() {
+	return this.split(/\s+/);
+}
+String.prototype.dot2int = function() {
+	return parseInt(this.replace(/[.,]/g, ''));
+}
+String.prototype.stripSpan = function() {
+	return this.replace(/<span[\w\s\S\n\r]*?\/span>/gm,'').replace(/[\s]/g,'');
+}
+function getOfficiers(A) {
+	var div = document.getElementById('officers');
+	var aOff = div.getElementsByTagName('a');
+	for (var i = 0; i < aOff.length; i++) {
+		var classes = aOff[i].getAttribute('class').ssplit();
+		A.set(classes[3], classes[1]);
+		console.log('[DEBUG] Officiers:',classes[3], classes[1]);
+	}
+}
+function Account() {
+	this['officers'] = {};
+}
+Account.prototype = {
+	set: function(name, status) {
+		this['officers'][name] = status == "on" ? true : false ;
+	}
+}
+var A = new Account();
+getOfficiers(A);
+console.log(A);
 // Calculs
 // Mines:
 //   Met : 30 x N x 1.1^N
@@ -431,30 +471,24 @@ function prodDeut(md,speed, lvlplasma, temperature, geologue, booster) {
 // ==================================
 
 var RCH = new Recherches();
-RCH.load();
+var PS = new PlanetStorage();
 var srvDatas = new Server();
+
+RCH.load();
+
 console.log('Paramètres du serveur:', srvDatas);
 localStorage.setItem('ICR_Server', JSON.stringify(srvDatas));
 
 var PlanetIDS = [];
-
-var PS = PlanetStorage();
 var Planets = PS.load();
-/*
-GM_setValue('ICRPlanets', '{}');
-var PlanetsDatas = JSON.parse(GM_getValue('ICRPlanets'));
-if (PlanetsDatas != null) {
-	for (k in PlanetsDatas) {
-		Planets[k] = new Planet(PlanetsDatas[k]);
-	}
-}
-*/
-var pageName;
 
-if(pageName = /component=(empire)/.exec(url)[1]) {
+var pageName;
+if (pageName = /component=(empire)/.exec(url)) {
+	pageName = pageName[1];
 	// Vue empire
 	console.log('-- Page: empire');
-} else if (pageName = /page=(resources|overview|station|research|shipyard|defense|fleet[1-3]|galaxy)/.exec(url)[1]) {
+} else if (pageName = /page=(resources|overview|station|research|shipyard|defense|fleet[1-3]|galaxy)/.exec(url)) {
+	pageName = pageName[1];
 	console.log('-- Page: '+pageName);
 	checkPlanets(Planets);
 
@@ -462,15 +496,13 @@ if(pageName = /component=(empire)/.exec(url)[1]) {
 	var CP = getCurrentPlanet();
 
 	// MAJ des ressources + production
-	//var rezUL = document.getElementById('resources');
-	//console.log(rezUL);
-
-	var metal = parseInt(document.getElementById('resources_metal').innerHTML.replace(/[.,]/g,''));
-	var crystal = parseInt(document.getElementById('resources_crystal').innerHTML.replace(/[.,]/g,''));
-	var deuterium = parseInt(document.getElementById('resources_deuterium').innerHTML.replace(/[.,]/g,''));
+	var metal = parseInt(document.getElementById('resources_metal').innerHTML.dot2int());
+	var crystal = parseInt(document.getElementById('resources_crystal').innerHTML.dot2int());
+	var deuterium = parseInt(document.getElementById('resources_deuterium').innerHTML.dot2int());
 	CP.setResources(metal,crystal,deuterium);
 	console.log('Planète courante:',CP);
 
+	// Sauvegarde des modifications
 	GM_setValue('ICRPlanets', JSON.stringify(Planets));
 	localStorage.setItem('ICR_Planets', JSON.stringify(Planets));
 
@@ -482,8 +514,7 @@ if(pageName = /component=(empire)/.exec(url)[1]) {
 		if (!CP.isMoon()) {
 			console.log('-- Récupération des niveau de mines');
 			for(var i=1; i<=6; i++) {
-				var level = parseInt(document.getElementById('button'+i).getElementsByClassName('level')[0].innerHTML
-					.replace(/<span[\w\s\S\n\r]*\/span>/m,'').replace(/[\s]/g,''));
+				var level = parseInt(document.getElementById('button'+i).getElementsByClassName('level')[0].innerHTML.stripSpan());
 				CP.setMine(i, level);
 			}
 		} else {
@@ -492,8 +523,7 @@ if(pageName = /component=(empire)/.exec(url)[1]) {
 		// Récupération des hangars
 		console.log('-- Récupération des niveau de hangars');
 		for(var i=1; i<=3; i++) {
-			var level = parseInt(document.getElementById('button'+(i+6)).getElementsByClassName('level')[0].innerHTML
-				.replace(/<span[\w\s\S\n\r]*?\/span>/gm,'').replace(/[\s]/g,''));
+			var level = parseInt(document.getElementById('button'+(i+6)).getElementsByClassName('level')[0].innerHTML.stripSpan());
 			CP.setHangar(i, level);
 		}
 	} else if (pageName == 'station') { // page installations
@@ -501,17 +531,16 @@ if(pageName = /component=(empire)/.exec(url)[1]) {
 			console.log('-- Installations différentes sur une lune');
 		} else {
 			for(var i=0; i<=7; i++) {
-				var level = parseInt(document.getElementById('button'+i).getElementsByClassName('level')[0].innerHTML
-					.replace(/<span [\w\s\S\n\r]*?<\/span>/gm,'').replace(/[\s]/g,''));
+				var level = parseInt(document.getElementById('button'+i).getElementsByClassName('level')[0].innerHTML.stripSpan());
 				CP.setBatiment(i, level);
 			}
 		}
 	} else if (pageName == 'research') {
+		// Récupération des recherches
 		var btns = document.getElementsByClassName('detail_button');
 		for (var i=0; i<btns.length;i++) {
 			var rshID = /details([0-9]+)/.exec(btns[i].id);
-			var lvl = btns[i].getElementsByClassName('level')[0].innerHTML
-				.replace(/<span [\w\s\S\n\r]*?<\/span>/gm,'').replace(/[\s]/g,'');
+			var lvl = btns[i].getElementsByClassName('level')[0].innerHTML.stripSpan();
 			RCH.set(rshID[1], lvl);
 		}
 		RCH.save();
@@ -522,13 +551,13 @@ if(pageName = /component=(empire)/.exec(url)[1]) {
 		for (var k=202; k<=215; k++) {
 			if (k != 212) { // Pas les sats
 				var btn = document.getElementById('details'+k);
-				var lvl = btn.getElementsByClassName('level')[0].innerHTML
-					.replace(/<span [\w\s\S\n\r]*?<\/span>/gm,'').replace(/[\s]/g,'');
+				var lvl = btn.getElementsByClassName('level')[0].innerHTML.stripSpan();
 				CP.setVaisseau(k, lvl);
 			}
 		}
 	}
-} else if (pageName = /page=(messages)/.exec(url)[1]) {
+} else if (pageName = /page=(messages)/.exec(url)) {
+	pageName = pageName[1];
 	console.log('-- Page: messages');
 } else {
 	pageName = /page=([a-z]+)/.exec(url)[1];
